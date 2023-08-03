@@ -8,20 +8,23 @@ use player::Player;
 
 #[derive(Debug, Clone)]
 pub struct GameEffect {
+    name: String,
     target: EffectTarget,
     effect: EffectTrigger,
 }
 
 impl GameEffect {
-    pub fn player(effect: EffectTrigger) -> Self {
+    pub fn player(name: &str, effect: EffectTrigger) -> Self {
         Self {
+            name: name.to_string(),
             target: EffectTarget::Player,
             effect,
         }
     }
 
-    pub fn enemy(effect: EffectTrigger) -> Self {
+    pub fn enemy(name: &str, effect: EffectTrigger) -> Self {
         Self {
+            name: name.to_string(),
             target: EffectTarget::Enemy,
             effect,
         }
@@ -77,6 +80,7 @@ pub enum EffectType {
 pub enum Enchantment {
     SpellCostAdjust(ElementType, i32),
     SpellDamageAdjust(ElementType, i32),
+    PowerAddPerTurn(i32),
 }
 
 #[derive(Debug, Clone)]

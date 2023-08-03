@@ -17,7 +17,7 @@ impl Player {
     pub fn player_enchantments(self) -> Self {
         let current_activated_effects =
             self.cards.inner.iter().fold(FpVec::new(), |eff_vec, card| {
-                card.posession_effects
+                card.enchantments
                     .inner
                     .iter()
                     .fold(eff_vec, |card_eff_vec, effect| {
@@ -25,6 +25,7 @@ impl Player {
                             match &effect.effect {
                                 EffectTrigger::Always(eff) => match eff {
                                     EffectType::Enchantment(ench) => {
+                                        println!("Adding permanent enchantment: {:?}", ench);
                                         card_eff_vec.push(ench.clone())
                                     }
                                     _ => card_eff_vec,
@@ -32,6 +33,10 @@ impl Player {
                                 EffectTrigger::Condition(cond, eff) if cond.check_player(&self) => {
                                     match eff {
                                         EffectType::Enchantment(ench) => {
+                                            println!(
+                                                "Adding conditional permanent enchantment: {:?} with cond: {:?}",
+                                                ench, cond
+                                            );
                                             card_eff_vec.push(ench.clone())
                                         }
                                         _ => card_eff_vec,
@@ -44,58 +49,86 @@ impl Player {
                         }
                     })
             });
+        println!(
+            "All perm. enchantments: {:?}",
+            self.current_activated_effects
+        );
         Self {
             current_activated_effects,
             ..self
         }
     }
 
-    pub fn player_play_card(&self, card: PlayerCard) -> FpVec<GameEffect> {
-        let card = self
-            .current_activated_effects
-            .inner
-            .iter()
-            .fold(card, |card, eff| match eff {
-                Enchantment::SpellCostAdjust(element, amt) if *element == card.element => {
-                    PlayerCard {
-                        power_cost: min(1, card.power_cost - amt),
-                        ..card
-                    }
-                }
-                Enchantment::SpellDamageAdjust(element, adj) if *element == card.element => {
-                    PlayerCard {
-                        play_card_effects: card.play_card_effects.push(GameEffect {
-                            target: EffectTarget::Enemy,
-                            effect: EffectTrigger::Always(EffectType::Damage(Damage {
-                                element_type: element.clone(),
-                                amount: *adj,
-                            })),
-                        }),
-                        ..card
-                    }
-                }
-                _ => card,
-            });
+    pub fn player_play_card(
+        &self,
+        card: PlayerCard,
+        current_power_pool: i32,
+    ) -> (FpVec<GameEffect>, i32) {
+        if !card.can_play {
+            (FpVec::new(), 0)
+        } else {
+            let card =
+                self.current_activated_effects
+                    .inner
+                    .iter()
+                    .fold(card, |card, eff| match eff {
+                        Enchantment::SpellCostAdjust(element, amt) if *element == card.element => {
+                            println!("{} cost down", amt);
+                            PlayerCard {
+                                power_cost: min(1, card.power_cost - amt),
+                                ..card
+                            }
+                        }
+                        Enchantment::SpellDamageAdjust(element, adj)
+                            if *element == card.element =>
+                        {
+                            PlayerCard {
+                                play_card_effects: card.play_card_effects.push(GameEffect::enemy(
+                                    "Spell Damage Adjust Effect",
+                                    EffectTrigger::Always(EffectType::Damage(Damage {
+                                        element_type: element.clone(),
+                                        amount: *adj,
+                                    })),
+                                )),
+                                ..card
+                            }
+                        }
+                        _ => card,
+                    });
 
-        FpVec::from_vec(vec![GameEffect::player(EffectTrigger::Always(
-            EffectType::PowerAdjust(-1 * (card.power_cost as i32)),
-        ))])
-        .extend(card.play_card_effects)
+            if current_power_pool >= card.power_cost {
+                println!(
+                    "Play card: {} for {} cost ({} power available)",
+                    card.name, card.power_cost, current_power_pool
+                );
+                (
+                    FpVec::from_vec(vec![GameEffect::player(
+                        &format!("Spell Cost for {}", card.name),
+                        EffectTrigger::Always(EffectType::PowerAdjust(
+                            -1 * (card.power_cost as i32),
+                        )),
+                    )])
+                    .extend(card.play_card_effects),
+                    card.power_cost,
+                )
+            } else {
+                println!(
+                    "Can't play {} (cost: {}), insufficient power ({} power left)",
+                    card.name, card.power_cost, current_power_pool
+                );
+                (FpVec::new(), 0)
+            }
+        }
     }
 
     pub fn start_turn(&self) -> FpVec<GameEffect> {
-        let base_effects = FpVec::from_vec(vec![GameEffect::player(EffectTrigger::Always(
-            EffectType::PowerAdjust(3),
-        ))]);
-        self.cards.inner.iter().fold(base_effects, |effects, card| {
-            effects.extend(card.posession_effects.clone())
+        self.cards.inner.iter().fold(FpVec::new(), |effects, card| {
+            effects.extend(card.start_turn_effects.clone())
         })
     }
 
     pub fn end_turn(&self) -> FpVec<GameEffect> {
-        self.cards.inner.iter().fold(FpVec::new(), |effects, card| {
-            effects.extend(card.posession_effects.clone())
-        })
+        FpVec::new()
     }
 
     pub fn trigger_effect(self, trigger: EffectTrigger, enemy: &Enemy) -> Self {
@@ -141,6 +174,8 @@ pub struct PlayerCard {
     pub element: ElementType,
     pub can_play: bool,
     pub name: String,
-    pub posession_effects: FpVec<GameEffect>,
+    pub description: String,
+    pub enchantments: FpVec<GameEffect>,
+    pub start_turn_effects: FpVec<GameEffect>,
     pub play_card_effects: FpVec<GameEffect>,
 }

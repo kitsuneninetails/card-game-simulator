@@ -1,9 +1,6 @@
 use crate::fp_vec::FpVec;
 use crate::player::Player;
-use crate::{
-    player::PlayerCard, Damage, DefenseProps, EffectCondition, EffectTrigger, EffectType,
-    ElementType, GameEffect,
-};
+use crate::{Damage, DefenseProps, EffectTrigger, EffectType, ElementType, GameEffect};
 
 #[derive(Debug, Clone)]
 pub struct Enemy {
