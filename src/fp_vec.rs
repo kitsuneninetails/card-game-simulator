@@ -18,7 +18,7 @@ impl<T> FpVec<T> {
         Self { inner }
     }
 
-    pub fn pop(self, item: T) -> (Self, Option<T>) {
+    pub fn pop(self) -> (Self, Option<T>) {
         let mut inner = self.inner;
         let item = inner.pop();
         (Self { inner }, item)

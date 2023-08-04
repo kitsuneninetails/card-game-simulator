@@ -44,6 +44,14 @@ impl Game {
         }
     }
 
+    pub fn check_game_result(enemy: &Enemy, player: &Player, turn_number: u32) -> GameOutcome {
+        match 0 {
+            _ if player.hit_points <= 0 => GameOutcome::EnemyWins(turn_number),
+            _ if enemy.hit_points <= 0 => GameOutcome::PlayerWins(turn_number),
+            _ => GameOutcome::Undecided,
+        }
+    }
+
     pub fn take_player_turn(self, card_play_list: FpVec<PlayerCard>) -> Self {
         let enemy = self.enemy;
         let player = self.player;
@@ -67,7 +75,7 @@ impl Game {
         let (res_pool, play_effects) = card_play_list.inner.into_iter().fold(
             (curr_power_pool, FpVec::new()),
             |(current_pool, effects), card| {
-                let (new_effects, power_cost) = player.player_play_card(card, current_pool);
+                let (new_effects, power_cost) = player.player_play_card(&enemy, card, current_pool);
                 (current_pool - power_cost, effects.extend(new_effects))
             },
         );
@@ -78,11 +86,7 @@ impl Game {
             .into_iter()
             .fold((enemy, player), fold_effects);
 
-        let game_result = match 0 {
-            _ if player.hit_points <= 0 => GameOutcome::EnemyWins(self.turn_number),
-            _ if enemy.hit_points <= 0 => GameOutcome::PlayerWins(self.turn_number),
-            _ => GameOutcome::Undecided,
-        };
+        let game_result = Self::check_game_result(&enemy, &player, self.turn_number);
 
         let player = Player {
             power_reserve: res_pool,
@@ -100,21 +104,31 @@ impl Game {
         let enemy = self.enemy;
         let player = self.player;
 
-        let effects = enemy.start_turn(&player).extend(enemy.end_turn(&player));
-
-        let (enemy, player) = effects
+        let (enemy, player) = enemy
+            .temp_start_turn_effects
+            .clone()
             .inner
             .into_iter()
             .fold((enemy, player), fold_effects);
+        let (enemy, player) = if !enemy.skip_next_turn {
+            let effects = enemy.start_turn(&player).extend(enemy.end_turn(&player));
 
-        let game_result = match 0 {
-            _ if player.hit_points <= 0 => GameOutcome::EnemyWins(self.turn_number),
-            _ if enemy.hit_points <= 0 => GameOutcome::PlayerWins(self.turn_number),
-            _ => GameOutcome::Undecided,
+            effects
+                .inner
+                .into_iter()
+                .fold((enemy, player), fold_effects)
+        } else {
+            (enemy, player)
         };
 
+        let game_result = Self::check_game_result(&enemy, &player, self.turn_number);
+
         Self {
-            enemy,
+            enemy: Enemy {
+                skip_next_turn: false,
+                temp_start_turn_effects: FpVec::new(),
+                ..enemy
+            },
             player,
             game_result,
             turn_number: self.turn_number + 1,

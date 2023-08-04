@@ -13,97 +13,66 @@ use card_game_simulator::{
 };
 
 pub fn init_game() -> Game {
-    let enemy = Enemy {
-        defense_props: DefenseProps {
-            wind: DamageAdjustment::Normal,
-            water: DamageAdjustment::Absolute(1),
-            land: DamageAdjustment::Absolute(-1),
-            any: DamageAdjustment::Normal,
-        },
-        start_turn_effects: FpVec::new(),
-        end_turn_effects: FpVec::from_vec(vec![GameEffect::player(
-            "Enemy Attack",
-            EffectTrigger::Always(EffectType::Damage(Damage::raw(3))),
-        )]),
-        hit_points: 10,
-    };
+    let player_card_1 = PlayerCard::new(
+        "Waterspout",
+        "Play to cause 3 Water Damage.  Enchant: ALl Water spells cost 1 less.",
+        3,
+        ElementType::Water,
+    )
+    .game_start_effect(GameEffect::spell_cost_down_element(ElementType::Water, -1))
+    .play_card_effects(GameEffect::element_damage(ElementType::Water, 3));
 
-    let water_poss_cost_down = EffectTrigger::Condition(
-        EffectCondition::PlayerHasCardWithElement(ElementType::Water),
-        EffectType::Enchantment(Enchantment::SpellCostAdjust(ElementType::Water, -1)),
-    );
-    let water_damage = EffectTrigger::Always(EffectType::Damage(Damage {
-        amount: 3,
-        element_type: ElementType::Water,
-    }));
-    let player_card_1 = PlayerCard {
-        element: ElementType::Water,
-        power_cost: 3,
-        can_play: true,
-        name: "Waterspout".to_string(),
-        description: "Play to cause 3 Water Damage.  Enchant: ALl Water spells cost 1 less."
-            .to_string(),
-        enchantments: FpVec::from_vec(vec![GameEffect::player(
-            "Water Spell Cost Down",
-            water_poss_cost_down,
-        )]),
-        start_turn_effects: FpVec::new(),
-        play_card_effects: FpVec::from_vec(vec![GameEffect::enemy("Attack", water_damage)]),
-    };
+    let player_card_2 = PlayerCard::new(
+        "Spill Net",
+        "Play to cause 3 Water Damage.",
+        1,
+        ElementType::Water,
+    )
+    .play_card_effects(GameEffect::element_damage(ElementType::Water, 3));
 
-    let water_damage = EffectTrigger::Always(EffectType::Damage(Damage {
-        amount: 3,
-        element_type: ElementType::Water,
-    }));
-    let player_card_2 = PlayerCard {
-        element: ElementType::Water,
-        power_cost: 1,
-        can_play: true,
-        name: "Spill Net".to_string(),
-        description: "Play to cause 3 Water Damage.".to_string(),
-        enchantments: FpVec::new(),
-        start_turn_effects: FpVec::new(),
-        play_card_effects: FpVec::from_vec(vec![GameEffect::enemy("Attack", water_damage)]),
-    };
+    let player_card_3 = PlayerCard::new(
+        "Dig Hole",
+        "Play to cause 6 Land Damage.",
+        2,
+        ElementType::Land,
+    )
+    .play_card_effects(GameEffect::element_damage(ElementType::Land, 6));
 
-    let land_damage = EffectTrigger::Always(EffectType::Damage(Damage {
-        amount: 6,
-        element_type: ElementType::Land,
-    }));
-    let player_card_3 = PlayerCard {
-        element: ElementType::Land,
-        power_cost: 2,
-        can_play: true,
-        name: "Dig Hole".to_string(),
-        description: "Play to cause 6 Land Damage.".to_string(),
-        enchantments: FpVec::new(),
-        start_turn_effects: FpVec::new(),
-        play_card_effects: FpVec::from_vec(vec![GameEffect::enemy("Attack", land_damage)]),
-    };
+    let player_card_4 = PlayerCard::new(
+        "Solar Power",
+        "Enchant: Add 1 power at the beginning of each turn.",
+        0,
+        ElementType::NoElement,
+    )
+    .cant_play()
+    .game_start_effect(GameEffect::power_add_per_turn(1));
 
-    let power_eff = EffectTrigger::Always(EffectType::Enchantment(Enchantment::PowerAddPerTurn(1)));
-    let player_card_4 = PlayerCard {
-        element: ElementType::NoElement,
-        power_cost: 0,
-        can_play: false,
-        name: "Solar Power".to_string(),
-        description: "Enchant: Add 1 power at the beginning of each turn.".to_string(),
-        enchantments: FpVec::from_vec(vec![GameEffect::player("Power Add 1", power_eff)]),
-        start_turn_effects: FpVec::new(),
-        play_card_effects: FpVec::new(),
-    };
-
-    let player = Player {
-        hit_points: 20,
-        cards: FpVec::from_vec(vec![
+    let player = Player::new(
+        20,
+        FpVec::from_vec(vec![
             player_card_1,
             player_card_2,
             player_card_3,
             player_card_4,
         ]),
-        power_reserve: 0,
-        current_activated_effects: FpVec::new(),
-    };
+    );
+
+    let enemy = Enemy::new(
+        "Oil Spill",
+        10,
+        DefenseProps {
+            wind: DamageAdjustment::Normal,
+            water: DamageAdjustment::Absolute(1),
+            land: DamageAdjustment::Absolute(-1),
+            any: DamageAdjustment::Normal,
+        },
+        3,
+    )
+    .player_play_card_effects(GameEffect::enemy_cond_thorns_element_played(
+        ElementType::Land,
+        10,
+    ));
+
     Game::start(enemy, player)
 }
 

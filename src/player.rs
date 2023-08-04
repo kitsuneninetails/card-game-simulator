@@ -1,6 +1,6 @@
 use crate::fp_vec::FpVec;
 use crate::{
-    enemy::Enemy, game_effects::GameEffect, Damage, EffectTarget, EffectTrigger, EffectType,
+    enemy::Enemy, game_effects::GameEffect, Damage, EffectCondition, EffectTrigger, EffectType,
     ElementType, Enchantment,
 };
 use std::cmp::min;
@@ -14,6 +14,15 @@ pub struct Player {
 }
 
 impl Player {
+    pub fn new(hit_points: i32, cards: FpVec<PlayerCard>) -> Self {
+        Self {
+            cards,
+            hit_points,
+            power_reserve: 0,
+            current_activated_effects: FpVec::new(),
+        }
+    }
+
     pub fn description(&self) -> String {
         format!(
             "HP [{}]  Current Power [{}]  Enchantment Effects [{}]",
@@ -22,20 +31,20 @@ impl Player {
             self.current_activated_effects
                 .inner
                 .iter()
-                .fold(String::new(), |out, eff| {
-                    format!("{}{}, ", out, eff.description())
-                })
+                .map(|eff| eff.description())
+                .collect::<Vec<String>>()
+                .join(", "),
         )
     }
 
     pub fn player_enchantments(self) -> Self {
         let current_activated_effects =
             self.cards.inner.iter().fold(FpVec::new(), |eff_vec, card| {
-                card.enchantments
+                card.game_start_effects
                     .inner
                     .iter()
                     .fold(eff_vec, |card_eff_vec, effect| {
-                        if let EffectTarget::Player = effect.target {
+                        if effect.target.is_player() {
                             match &effect.effect {
                                 EffectTrigger::Always(eff) => match eff {
                                     EffectType::Enchantment(ench) => {
@@ -66,6 +75,7 @@ impl Player {
 
     pub fn player_play_card(
         &self,
+        enemy: &Enemy,
         card: PlayerCard,
         current_power_pool: i32,
     ) -> (FpVec<GameEffect>, i32) {
@@ -77,9 +87,15 @@ impl Player {
                     .inner
                     .iter()
                     .fold(card, |card, eff| match eff {
-                        Enchantment::SpellCostAdjust(element, amt) if *element == card.element => {
+                        Enchantment::SpellCostAdjust(element, amt)
+                            if *element == card.element || *element == ElementType::NoElement =>
+                        {
                             PlayerCard {
-                                power_cost: min(1, card.power_cost - amt),
+                                power_cost: if card.power_cost + amt < 1 {
+                                    1
+                                } else {
+                                    card.power_cost + amt
+                                },
                                 ..card
                             }
                         }
@@ -105,6 +121,30 @@ impl Player {
                     "Play card: {} for {} cost ({} power available before play)",
                     card.name, card.power_cost, current_power_pool
                 );
+                let enemy_thorns_effects: FpVec<GameEffect> = enemy
+                    .player_play_card_effects
+                    .inner
+                    .iter()
+                    .fold(FpVec::new(), |effects, eff| match &eff.effect {
+                        EffectTrigger::Condition(cond, triggered_effect)
+                            if eff.target.is_player()
+                                && *cond
+                                    == EffectCondition::PlayerPlaysCardWithElement(
+                                        card.element.clone(),
+                                    ) =>
+                        {
+                            println!(
+                                "Player causes effect due to casting spell of element {}: {}",
+                                card.element.description(),
+                                triggered_effect.description()
+                            );
+                            effects.push(GameEffect::player(
+                                &eff.name,
+                                EffectTrigger::Always(triggered_effect.clone()),
+                            ))
+                        }
+                        _ => effects,
+                    });
                 (
                     FpVec::from_vec(vec![GameEffect::player(
                         &format!("Spell Cost for {}", card.name),
@@ -112,7 +152,8 @@ impl Player {
                             -1 * (card.power_cost as i32),
                         )),
                     )])
-                    .extend(card.play_card_effects),
+                    .extend(card.play_card_effects)
+                    .extend(enemy_thorns_effects),
                     card.power_cost,
                 )
             } else {
@@ -190,7 +231,49 @@ pub struct PlayerCard {
     pub can_play: bool,
     pub name: String,
     pub description: String,
-    pub enchantments: FpVec<GameEffect>,
+    pub game_start_effects: FpVec<GameEffect>,
     pub start_turn_effects: FpVec<GameEffect>,
     pub play_card_effects: FpVec<GameEffect>,
+}
+
+impl PlayerCard {
+    pub fn new(name: &str, description: &str, power_cost: i32, element: ElementType) -> Self {
+        Self {
+            name: name.to_string(),
+            description: description.to_string(),
+            power_cost,
+            element,
+            can_play: true,
+            game_start_effects: FpVec::new(),
+            start_turn_effects: FpVec::new(),
+            play_card_effects: FpVec::new(),
+        }
+    }
+    pub fn cant_play(self) -> Self {
+        Self {
+            can_play: false,
+            ..self
+        }
+    }
+
+    pub fn game_start_effect(self, effect: GameEffect) -> Self {
+        Self {
+            game_start_effects: self.game_start_effects.push(effect),
+            ..self
+        }
+    }
+
+    pub fn start_turn_effects(self, effect: GameEffect) -> Self {
+        Self {
+            start_turn_effects: self.start_turn_effects.push(effect),
+            ..self
+        }
+    }
+
+    pub fn play_card_effects(self, effect: GameEffect) -> Self {
+        Self {
+            play_card_effects: self.play_card_effects.push(effect),
+            ..self
+        }
+    }
 }

@@ -4,6 +4,7 @@ pub mod game;
 pub mod game_effects;
 pub mod player;
 
+use crate::player::PlayerCard;
 use enemy::Enemy;
 use player::Player;
 
@@ -18,6 +19,18 @@ impl EffectTarget {
         match self {
             EffectTarget::Player => "PLAYER".to_string(),
             EffectTarget::Enemy => "ENEMY".to_string(),
+        }
+    }
+    pub fn is_player(&self) -> bool {
+        match self {
+            EffectTarget::Player => true,
+            EffectTarget::Enemy => false,
+        }
+    }
+    pub fn is_enemy(&self) -> bool {
+        match self {
+            EffectTarget::Player => false,
+            EffectTarget::Enemy => true,
         }
     }
 }
@@ -39,10 +52,11 @@ impl EffectTrigger {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum EffectCondition {
     PlayerHasCardWithElement(ElementType),
     PlayerHasNoCardWithElement(ElementType),
+    PlayerPlaysCardWithElement(ElementType),
 }
 
 impl EffectCondition {
@@ -53,6 +67,9 @@ impl EffectCondition {
             }
             EffectCondition::PlayerHasNoCardWithElement(el) => {
                 format!("HAS_NO_ELEMENT [{}]", el.description())
+            }
+            EffectCondition::PlayerPlaysCardWithElement(el) => {
+                format!("PLAYS_SPELL_ELEMENT [{}]", el.description())
             }
         }
     }
@@ -65,6 +82,14 @@ impl EffectCondition {
             EffectCondition::PlayerHasNoCardWithElement(el) => {
                 player.cards.inner.iter().all(|card| card.element != *el)
             }
+            _ => false,
+        }
+    }
+
+    pub fn check_player_card(&self, card: &PlayerCard) -> bool {
+        match self {
+            EffectCondition::PlayerPlaysCardWithElement(el) => card.element == *el,
+            _ => false,
         }
     }
     pub fn check_enemy(&self, enemy: &Enemy) -> bool {
@@ -81,6 +106,7 @@ pub enum EffectType {
     PowerAdjust(i32),
     Enchantment(Enchantment),
     PercentDamage(f64),
+    SkipTurn,
 }
 
 impl EffectType {
@@ -93,6 +119,7 @@ impl EffectType {
             EffectType::PowerAdjust(adj) => format!("Power {}", adj),
             EffectType::Enchantment(ench) => format!("Enchant [{}]", ench.description()),
             EffectType::PercentDamage(dmg) => format!("Damage {}%", dmg),
+            EffectType::SkipTurn => format!("Skip Turn"),
         }
     }
 }
