@@ -1,6 +1,9 @@
 use crate::fp_vec::FpVec;
 use crate::player::PlayerCard;
-use crate::{enemy::Enemy, player::Player, EffectTarget, Enchantment, GameEffect};
+use crate::{
+    enemy::Enemy, game_effects::GameEffect, player::Player, EffectTarget, EffectTrigger,
+    EffectType, Enchantment,
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum GameOutcome {
@@ -10,7 +13,6 @@ pub enum GameOutcome {
 }
 
 fn fold_effects((enemy, player): (Enemy, Player), effect: GameEffect) -> (Enemy, Player) {
-    println!("Checking game effect: {}", effect.name);
     match effect.target {
         EffectTarget::Player => {
             let player = player.trigger_effect(effect.effect, &enemy);
@@ -27,7 +29,6 @@ fn fold_effects((enemy, player): (Enemy, Player), effect: GameEffect) -> (Enemy,
 pub struct Game {
     pub enemy: Enemy,
     pub player: Player,
-    pub power_pool: i32,
     pub turn_number: u32,
     pub game_result: GameOutcome,
 }
@@ -39,7 +40,6 @@ impl Game {
             player,
             enemy,
             turn_number: 1,
-            power_pool: 0,
             game_result: GameOutcome::Undecided,
         }
     }
@@ -49,8 +49,9 @@ impl Game {
         let player = self.player;
 
         let start_effects = player.start_turn();
-        let curr_power_pool = self.power_pool
-            + 3 // standard power up
+        let player =
+            player.trigger_effect(EffectTrigger::Always(EffectType::PowerAdjust(3)), &enemy);
+        let curr_power_pool = player.power_reserve
             + player
                 .current_activated_effects
                 .inner
@@ -83,11 +84,14 @@ impl Game {
             _ => GameOutcome::Undecided,
         };
 
+        let player = Player {
+            power_reserve: res_pool,
+            ..player
+        };
         Self {
             enemy,
             player,
             game_result,
-            power_pool: res_pool,
             ..self
         }
     }
@@ -117,23 +121,4 @@ impl Game {
             ..self
         }
     }
-
-    pub fn log_state(self) -> Self {
-        println!("State of game: {:?}", &self);
-        self
-    }
-}
-
-pub fn game_turn(game: Game, card_plays: FpVec<PlayerCard>) -> Game {
-    let new_game = if game.game_result == GameOutcome::Undecided {
-        game.take_player_turn(card_plays)
-    } else {
-        game
-    };
-    if new_game.game_result == GameOutcome::Undecided {
-        new_game.take_enemy_turn()
-    } else {
-        new_game
-    }
-    .log_state()
 }

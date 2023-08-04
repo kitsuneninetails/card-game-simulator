@@ -1,35 +1,11 @@
 pub mod enemy;
 pub mod fp_vec;
 pub mod game;
+pub mod game_effects;
 pub mod player;
 
 use enemy::Enemy;
 use player::Player;
-
-#[derive(Debug, Clone)]
-pub struct GameEffect {
-    name: String,
-    target: EffectTarget,
-    effect: EffectTrigger,
-}
-
-impl GameEffect {
-    pub fn player(name: &str, effect: EffectTrigger) -> Self {
-        Self {
-            name: name.to_string(),
-            target: EffectTarget::Player,
-            effect,
-        }
-    }
-
-    pub fn enemy(name: &str, effect: EffectTrigger) -> Self {
-        Self {
-            name: name.to_string(),
-            target: EffectTarget::Enemy,
-            effect,
-        }
-    }
-}
 
 #[derive(Debug, Clone)]
 pub enum EffectTarget {
@@ -37,10 +13,30 @@ pub enum EffectTarget {
     Enemy,
 }
 
+impl EffectTarget {
+    pub fn description(&self) -> String {
+        match self {
+            EffectTarget::Player => "PLAYER".to_string(),
+            EffectTarget::Enemy => "ENEMY".to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum EffectTrigger {
     Always(EffectType),
     Condition(EffectCondition, EffectType),
+}
+
+impl EffectTrigger {
+    pub fn description(&self) -> String {
+        match self {
+            EffectTrigger::Always(eff) => format!("[ALWAYS] {}", eff.description()),
+            EffectTrigger::Condition(cond, eff) => {
+                format!("[COND - {}] {}", cond.description(), eff.description())
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -50,6 +46,17 @@ pub enum EffectCondition {
 }
 
 impl EffectCondition {
+    pub fn description(&self) -> String {
+        match self {
+            EffectCondition::PlayerHasCardWithElement(el) => {
+                format!("HAS_ELEMENT [{}]", el.description())
+            }
+            EffectCondition::PlayerHasNoCardWithElement(el) => {
+                format!("HAS_NO_ELEMENT [{}]", el.description())
+            }
+        }
+    }
+
     pub fn check_player(&self, player: &Player) -> bool {
         match self {
             EffectCondition::PlayerHasCardWithElement(el) => {
@@ -76,11 +83,39 @@ pub enum EffectType {
     PercentDamage(f64),
 }
 
+impl EffectType {
+    pub fn description(&self) -> String {
+        match self {
+            EffectType::Damage(dmg) => {
+                format!("Damage [{}/{}]", dmg.element_type.description(), dmg.amount)
+            }
+            EffectType::LifeAdjust(adj) => format!("Life {}", adj),
+            EffectType::PowerAdjust(adj) => format!("Power {}", adj),
+            EffectType::Enchantment(ench) => format!("Enchant [{}]", ench.description()),
+            EffectType::PercentDamage(dmg) => format!("Damage {}%", dmg),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Enchantment {
     SpellCostAdjust(ElementType, i32),
     SpellDamageAdjust(ElementType, i32),
     PowerAddPerTurn(i32),
+}
+
+impl Enchantment {
+    pub fn description(&self) -> String {
+        match self {
+            Enchantment::SpellCostAdjust(cond, amt) => {
+                format!("Spell cost {} [{}]", amt, cond.description())
+            }
+            Enchantment::SpellDamageAdjust(cond, amt) => {
+                format!("Spell damage {} [{}]", amt, cond.description())
+            }
+            Enchantment::PowerAddPerTurn(amt) => format!("Add {} power each turn", amt),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -112,6 +147,17 @@ pub enum ElementType {
     Land,
     Water,
     NoElement,
+}
+
+impl ElementType {
+    pub fn description(&self) -> String {
+        match self {
+            ElementType::Wind => "Wind".to_string(),
+            ElementType::Land => "Land".to_string(),
+            ElementType::Water => "Water".to_string(),
+            ElementType::NoElement => "No Elem".to_string(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

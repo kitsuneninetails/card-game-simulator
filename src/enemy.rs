@@ -1,6 +1,8 @@
 use crate::fp_vec::FpVec;
 use crate::player::Player;
-use crate::{Damage, DefenseProps, EffectTrigger, EffectType, ElementType, GameEffect};
+use crate::{
+    game_effects::GameEffect, Damage, DefenseProps, EffectTrigger, EffectType, ElementType,
+};
 
 #[derive(Debug, Clone)]
 pub struct Enemy {
@@ -11,6 +13,25 @@ pub struct Enemy {
 }
 
 impl Enemy {
+    pub fn description(&self) -> String {
+        format!(
+            "HP [{}]  Start Turn Effects [{}]  End Turn Effects [{}]",
+            self.hit_points,
+            self.start_turn_effects
+                .inner
+                .iter()
+                .fold(String::new(), |out, eff| {
+                    format!("{}{}, ", out, eff.description())
+                }),
+            self.end_turn_effects
+                .inner
+                .iter()
+                .fold(String::new(), |out, eff| {
+                    format!("{}{}, ", out, eff.description())
+                })
+        )
+    }
+
     pub fn start_turn(&self, player: &Player) -> FpVec<GameEffect> {
         self.start_turn_effects.clone()
     }
@@ -33,13 +54,15 @@ impl Enemy {
     }
 
     fn apply_effect(self, effect: EffectType) -> Self {
-        println!("Applying effect to enemy: {:?}", effect);
         match effect {
             EffectType::Damage(dmg) => self.take_damage(dmg),
-            EffectType::LifeAdjust(amt) => Self {
-                hit_points: self.hit_points + amt,
-                ..self
-            },
+            EffectType::LifeAdjust(amt) => {
+                println!("Emeny, {} HP", amt);
+                Self {
+                    hit_points: self.hit_points + amt,
+                    ..self
+                }
+            }
             _ => Self { ..self },
         }
     }
@@ -51,6 +74,12 @@ impl Enemy {
             ElementType::Water => self.defense_props.water.adjust_damage(damage.amount),
             ElementType::NoElement => self.defense_props.any.adjust_damage(damage.amount),
         };
+        println!(
+            "Enemy takes damage: {}/{} ({} actual)",
+            damage.element_type.description(),
+            damage.amount,
+            raw_damage
+        );
         Enemy {
             hit_points: self.hit_points - raw_damage,
             ..self

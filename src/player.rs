@@ -1,7 +1,7 @@
 use crate::fp_vec::FpVec;
 use crate::{
-    enemy::Enemy, Damage, EffectTarget, EffectTrigger, EffectType, ElementType, Enchantment,
-    GameEffect,
+    enemy::Enemy, game_effects::GameEffect, Damage, EffectTarget, EffectTrigger, EffectType,
+    ElementType, Enchantment,
 };
 use std::cmp::min;
 
@@ -14,6 +14,20 @@ pub struct Player {
 }
 
 impl Player {
+    pub fn description(&self) -> String {
+        format!(
+            "HP [{}]  Current Power [{}]  Enchantment Effects [{}]",
+            self.hit_points,
+            self.power_reserve,
+            self.current_activated_effects
+                .inner
+                .iter()
+                .fold(String::new(), |out, eff| {
+                    format!("{}{}, ", out, eff.description())
+                })
+        )
+    }
+
     pub fn player_enchantments(self) -> Self {
         let current_activated_effects =
             self.cards.inner.iter().fold(FpVec::new(), |eff_vec, card| {
@@ -25,7 +39,6 @@ impl Player {
                             match &effect.effect {
                                 EffectTrigger::Always(eff) => match eff {
                                     EffectType::Enchantment(ench) => {
-                                        println!("Adding permanent enchantment: {:?}", ench);
                                         card_eff_vec.push(ench.clone())
                                     }
                                     _ => card_eff_vec,
@@ -33,10 +46,6 @@ impl Player {
                                 EffectTrigger::Condition(cond, eff) if cond.check_player(&self) => {
                                     match eff {
                                         EffectType::Enchantment(ench) => {
-                                            println!(
-                                                "Adding conditional permanent enchantment: {:?} with cond: {:?}",
-                                                ench, cond
-                                            );
                                             card_eff_vec.push(ench.clone())
                                         }
                                         _ => card_eff_vec,
@@ -49,10 +58,6 @@ impl Player {
                         }
                     })
             });
-        println!(
-            "All perm. enchantments: {:?}",
-            self.current_activated_effects
-        );
         Self {
             current_activated_effects,
             ..self
@@ -73,7 +78,6 @@ impl Player {
                     .iter()
                     .fold(card, |card, eff| match eff {
                         Enchantment::SpellCostAdjust(element, amt) if *element == card.element => {
-                            println!("{} cost down", amt);
                             PlayerCard {
                                 power_cost: min(1, card.power_cost - amt),
                                 ..card
@@ -98,7 +102,7 @@ impl Player {
 
             if current_power_pool >= card.power_cost {
                 println!(
-                    "Play card: {} for {} cost ({} power available)",
+                    "Play card: {} for {} cost ({} power available before play)",
                     card.name, card.power_cost, current_power_pool
                 );
                 (
@@ -145,22 +149,33 @@ impl Player {
     }
 
     fn apply_effect(self, effect: EffectType) -> Self {
-        println!("Applying effect to player: {:?}", effect);
         match effect {
             EffectType::Damage(dmg) => self.take_damage(dmg),
-            EffectType::LifeAdjust(amt) => Self {
-                hit_points: self.hit_points + amt,
-                ..self
-            },
-            EffectType::PowerAdjust(amt) => Self {
-                power_reserve: self.power_reserve + amt,
-                ..self
-            },
+            EffectType::LifeAdjust(amt) => {
+                println!("Player, {} HP", amt);
+                Self {
+                    hit_points: self.hit_points + amt,
+                    ..self
+                }
+            }
+            EffectType::PowerAdjust(amt) => {
+                println!("Player, {} Power", amt);
+                Self {
+                    power_reserve: self.power_reserve + amt,
+                    ..self
+                }
+            }
             _ => Self { ..self },
         }
     }
 
     fn take_damage(self, damage: Damage) -> Self {
+        println!(
+            "Player takes damage: {}/{}",
+            damage.element_type.description(),
+            damage.amount
+        );
+
         Self {
             hit_points: self.hit_points - damage.amount,
             ..self

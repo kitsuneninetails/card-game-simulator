@@ -1,14 +1,15 @@
 #![feature(let_chains)]
 
 use card_game_simulator;
-use card_game_simulator::game::{game_turn, GameOutcome};
+use card_game_simulator::game::GameOutcome;
 use card_game_simulator::{
     enemy::Enemy,
     fp_vec::FpVec,
     game::Game,
+    game_effects::GameEffect,
     player::{Player, PlayerCard},
     Damage, DamageAdjustment, DefenseProps, EffectCondition, EffectTrigger, EffectType,
-    ElementType, Enchantment, GameEffect,
+    ElementType, Enchantment,
 };
 
 pub fn init_game() -> Game {
@@ -21,7 +22,7 @@ pub fn init_game() -> Game {
         },
         start_turn_effects: FpVec::new(),
         end_turn_effects: FpVec::from_vec(vec![GameEffect::player(
-            "",
+            "Enemy Attack",
             EffectTrigger::Always(EffectType::Damage(Damage::raw(3))),
         )]),
         hit_points: 10,
@@ -67,7 +68,7 @@ pub fn init_game() -> Game {
 
     let land_damage = EffectTrigger::Always(EffectType::Damage(Damage {
         amount: 6,
-        element_type: ElementType::Water,
+        element_type: ElementType::Land,
     }));
     let player_card_3 = PlayerCard {
         element: ElementType::Land,
@@ -152,6 +153,10 @@ fn game_loop(mut game: Game) -> Game {
             })
             .1
     );
+    println!("Game turn start: Turn {}", game.turn_number);
+    println!("Player Status: {}", game.player.description());
+    println!("Enemy Status: {}", game.enemy.description());
+
     while game.game_result == GameOutcome::Undecided && let Ok(card_numbers) = get_card_numbers() {
         let cards: FpVec<PlayerCard> =
             card_numbers
@@ -165,10 +170,16 @@ fn game_loop(mut game: Game) -> Game {
                         }
                     }
                 });
+
         game = game.take_player_turn(cards);
         if game.game_result == GameOutcome::Undecided {
             game = game.take_enemy_turn();
         }
+        println!("-----------------------------------");
+        println!("Game turn start: Turn {}", game.turn_number);
+        println!("Player Status: {}", game.player.description());
+        println!("Enemy Status: {}", game.enemy.description());
+
     }
     game
 }
