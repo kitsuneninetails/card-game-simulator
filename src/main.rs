@@ -2,51 +2,29 @@
 
 use card_game_simulator;
 use card_game_simulator::game::GameOutcome;
+use card_game_simulator::game_effects::{CardEffects, Enchantments, OnCardPlayEffects};
+use card_game_simulator::player::SpecialCards;
 use card_game_simulator::{
     enemy::Enemy,
     fp_vec::FpVec,
     game::Game,
-    game_effects::GameEffect,
     player::{Player, PlayerCard},
-    Damage, DamageAdjustment, DefenseProps, EffectCondition, EffectTrigger, EffectType,
-    ElementType, Enchantment,
+    ElementType,
 };
 
 pub fn init_game() -> Game {
-    let player_card_1 = PlayerCard::new(
-        "Waterspout",
-        "Play to cause 3 Water Damage.  Enchant: ALl Water spells cost 1 less.",
-        3,
-        ElementType::Water,
-    )
-    .game_start_effect(GameEffect::spell_cost_down_element(ElementType::Water, -1))
-    .play_card_effects(GameEffect::element_damage(ElementType::Water, 3));
+    let player_card_1 = PlayerCard::new("Gust", "Play to cause 3 Wind Damage.", ElementType::Wind)
+        .play_card_effect(CardEffects::do_element_damage(ElementType::Wind, 3));
 
-    let player_card_2 = PlayerCard::new(
-        "Spill Net",
-        "Play to cause 3 Water Damage.",
-        1,
-        ElementType::Water,
-    )
-    .play_card_effects(GameEffect::element_damage(ElementType::Water, 3));
+    let player_card_2 =
+        PlayerCard::new("Stream", "Play to cause 3 Land Damage.", ElementType::Land)
+            .play_card_effect(CardEffects::do_element_damage(ElementType::Land, 3));
 
-    let player_card_3 = PlayerCard::new(
-        "Dig Hole",
-        "Play to cause 6 Land Damage.",
-        2,
-        ElementType::Land,
-    )
-    .play_card_effects(GameEffect::element_damage(ElementType::Land, 6));
+    let player_card_3 =
+        PlayerCard::new("First Aid", "Play to head 8 hit points.", ElementType::Land)
+            .play_card_effect(CardEffects::heal(8));
 
-    let player_card_4 = PlayerCard::new(
-        "Solar Power",
-        "Enchant: Add 1 power at the beginning of each turn.",
-        0,
-        ElementType::NoElement,
-    )
-    .cant_play()
-    .game_start_effect(GameEffect::power_add_per_turn(1));
-
+    let player_card_4 = SpecialCards::fire_hose();
     let player = Player::new(
         20,
         FpVec::from_vec(vec![
@@ -57,21 +35,7 @@ pub fn init_game() -> Game {
         ]),
     );
 
-    let enemy = Enemy::new(
-        "Oil Spill",
-        10,
-        DefenseProps {
-            wind: DamageAdjustment::Normal,
-            water: DamageAdjustment::Absolute(1),
-            land: DamageAdjustment::Absolute(-1),
-            any: DamageAdjustment::Normal,
-        },
-        3,
-    )
-    .player_play_card_effects(GameEffect::enemy_cond_thorns_element_played(
-        ElementType::Land,
-        10,
-    ));
+    let enemy = Enemy::blackout();
 
     Game::start(enemy, player)
 }
@@ -95,7 +59,7 @@ fn get_card_numbers() -> Result<Vec<usize>, ()> {
     }
 }
 
-fn game_loop(mut game: Game) -> Game {
+fn print_cards(game: &Game) {
     println!("The cards are:");
     println!(
         "{}",
@@ -110,10 +74,9 @@ fn game_loop(mut game: Game) -> Game {
                         "{}{}\n",
                         text,
                         format!(
-                            "{}. {} [{}]{} - {}",
+                            "{}. {} {} - {}",
                             number,
                             card.name,
-                            card.power_cost,
                             if card.can_play { "" } else { " (CAN'T PLAY)" },
                             card.description
                         )
@@ -125,6 +88,10 @@ fn game_loop(mut game: Game) -> Game {
     println!("Game turn start: Turn {}", game.turn_number);
     println!("Player Status: {}", game.player.description());
     println!("Enemy Status: {}", game.enemy.description());
+}
+
+fn game_loop(mut game: Game) -> Game {
+    print_cards(&game);
 
     while game.game_result == GameOutcome::Undecided && let Ok(card_numbers) = get_card_numbers() {
         let cards: FpVec<PlayerCard> =
@@ -145,9 +112,7 @@ fn game_loop(mut game: Game) -> Game {
             game = game.take_enemy_turn();
         }
         println!("-----------------------------------");
-        println!("Game turn start: Turn {}", game.turn_number);
-        println!("Player Status: {}", game.player.description());
-        println!("Enemy Status: {}", game.enemy.description());
+        print_cards(&game);
 
     }
     game

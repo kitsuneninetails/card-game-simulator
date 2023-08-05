@@ -34,16 +34,6 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn start(enemy: Enemy, player: Player) -> Self {
-        let player = player.player_enchantments();
-        Self {
-            player,
-            enemy,
-            turn_number: 1,
-            game_result: GameOutcome::Undecided,
-        }
-    }
-
     pub fn check_game_result(enemy: &Enemy, player: &Player, turn_number: u32) -> GameOutcome {
         match 0 {
             _ if player.hit_points <= 0 => GameOutcome::EnemyWins(turn_number),
@@ -52,33 +42,102 @@ impl Game {
         }
     }
 
+    pub fn check_enchantments(
+        enchantments: &FpVec<GameEffect>,
+        enemy: &Enemy,
+        player: &Player,
+    ) -> (FpVec<Enchantment>, FpVec<Enchantment>) {
+        enchantments.inner.iter().fold(
+            (FpVec::new(), FpVec::new()),
+            |(enemy_vec, player_vec), eff| {
+                if eff.target.is_enemy() {
+                    match &eff.effect {
+                        EffectTrigger::Always(EffectType::Enchantment(ench)) => {
+                            (enemy_vec.push(ench.clone()), player_vec)
+                        }
+                        EffectTrigger::Condition(cond, EffectType::Enchantment(ench))
+                            if cond.check_enemy(&enemy) =>
+                        {
+                            (enemy_vec.push(ench.clone()), player_vec)
+                        }
+                        _ => (enemy_vec, player_vec),
+                    }
+                } else {
+                    match &eff.effect {
+                        EffectTrigger::Always(EffectType::Enchantment(ench)) => {
+                            (enemy_vec, player_vec.push(ench.clone()))
+                        }
+                        EffectTrigger::Condition(cond, EffectType::Enchantment(ench))
+                            if cond.check_player(&player) =>
+                        {
+                            (enemy_vec, player_vec.push(ench.clone()))
+                        }
+                        _ => (enemy_vec, player_vec),
+                    }
+                }
+            },
+        )
+    }
+
+    pub fn start(enemy: Enemy, player: Player) -> Self {
+        let (enemy_ench_from_enemy, player_ench_from_enemy) =
+            Self::check_enchantments(&enemy.enchantments, &enemy, &player);
+        let (enemy_ench_from_player, player_ench_from_player) = player.cards.inner.iter().fold(
+            (FpVec::new(), FpVec::new()),
+            |(enemy_eff_vec, player_eff_vec), card| {
+                let (e_vec, p_vec) =
+                    Self::check_enchantments(&card.game_start_effects, &enemy, &player);
+                (enemy_eff_vec.extend(e_vec), player_eff_vec.extend(p_vec))
+            },
+        );
+
+        let enemy_enchantments = enemy_ench_from_enemy.extend(enemy_ench_from_player);
+        let player_enchantments = player_ench_from_enemy.extend(player_ench_from_player);
+        println!(
+            "Game Starting with global enchantments:\n  * Enemy [{}]\n  * Player [{}]",
+            enemy_enchantments
+                .inner
+                .iter()
+                .fold(String::new(), |desc, ench| format!(
+                    "{}{}",
+                    desc,
+                    ench.description()
+                )),
+            player_enchantments
+                .inner
+                .iter()
+                .fold(String::new(), |desc, ench| format!(
+                    "{}{}",
+                    desc,
+                    ench.description()
+                )),
+        );
+
+        Game {
+            enemy: Enemy {
+                current_activated_effects: enemy_enchantments,
+                ..enemy
+            },
+            player: Player {
+                current_activated_effects: player_enchantments,
+                ..player
+            },
+            turn_number: 1,
+            game_result: GameOutcome::Undecided,
+        }
+    }
+
     pub fn take_player_turn(self, card_play_list: FpVec<PlayerCard>) -> Self {
         let enemy = self.enemy;
         let player = self.player;
 
         let start_effects = player.start_turn();
-        let player =
-            player.trigger_effect(EffectTrigger::Always(EffectType::PowerAdjust(3)), &enemy);
-        let curr_power_pool = player.power_reserve
-            + player
-                .current_activated_effects
-                .inner
-                .iter()
-                .fold(0, |power_add, card| {
-                    if let Enchantment::PowerAddPerTurn(amt) = card {
-                        power_add + amt
-                    } else {
-                        power_add
-                    }
-                });
-
-        let (res_pool, play_effects) = card_play_list.inner.into_iter().fold(
-            (curr_power_pool, FpVec::new()),
-            |(current_pool, effects), card| {
-                let (new_effects, power_cost) = player.player_play_card(&enemy, card, current_pool);
-                (current_pool - power_cost, effects.extend(new_effects))
-            },
-        );
+        let play_effects = card_play_list
+            .inner
+            .into_iter()
+            .fold(FpVec::new(), |effects, card| {
+                effects.extend(player.player_play_card(&enemy, card))
+            });
         let effects = start_effects.extend(play_effects).extend(player.end_turn());
 
         let (enemy, player) = effects
@@ -88,10 +147,7 @@ impl Game {
 
         let game_result = Self::check_game_result(&enemy, &player, self.turn_number);
 
-        let player = Player {
-            power_reserve: res_pool,
-            ..player
-        };
+        let player = Player { ..player };
         Self {
             enemy,
             player,

@@ -33,11 +33,12 @@ impl GameEffect {
             effect,
         }
     }
+}
 
-    // ENEMY EFFECTS
-    // Damage
-    pub fn enemy_attack(amount: i32) -> Self {
-        Self::player(
+pub struct EnemyEffects;
+impl EnemyEffects {
+    pub fn attack(amount: i32) -> GameEffect {
+        GameEffect::player(
             "Enemy Attack",
             EffectTrigger::Always(EffectType::Damage(Damage {
                 element_type: ElementType::NoElement,
@@ -45,11 +46,17 @@ impl GameEffect {
             })),
         )
     }
+}
 
-    pub fn enemy_cond_attack_element_present(element_type: ElementType, amount: i32) -> Self {
-        Self::player(
+pub struct Enchantments;
+impl Enchantments {
+    pub fn player_take_damage_elem_card_present(
+        element_type: ElementType,
+        amount: i32,
+    ) -> GameEffect {
+        GameEffect::player(
             &format!(
-                "Enemy Backlash Attack ({} Element)",
+                "Elemental Backlash Damage ({} Element)",
                 element_type.description()
             ),
             EffectTrigger::Condition(
@@ -62,10 +69,51 @@ impl GameEffect {
         )
     }
 
-    pub fn enemy_cond_thorns_element_played(element_type: ElementType, amount: i32) -> Self {
-        Self::player(
+    pub fn player_elem_spell_damage_adj(element_type: ElementType, amount: i32) -> GameEffect {
+        GameEffect::player(
             &format!(
-                "Enemy Thorns Attack ({} Element)",
+                "{} Element Spells adjust damage by {}",
+                element_type.description(),
+                amount
+            ),
+            EffectTrigger::Always(EffectType::Enchantment(Enchantment::SpellDamageAdjust(
+                element_type,
+                amount,
+            ))),
+        )
+    }
+
+    pub fn player_elem_spells_forbidden(element_type: ElementType) -> GameEffect {
+        GameEffect::player(
+            &format!("{} Element Spells Forbidden", element_type.description()),
+            EffectTrigger::Always(EffectType::Enchantment(Enchantment::SpellElementForbidden(
+                element_type,
+            ))),
+        )
+    }
+
+    pub fn player_shield_from_elem(amount: i32) -> GameEffect {
+        GameEffect::player(
+            &format!("Global Shield {}", amount,),
+            EffectTrigger::Always(EffectType::Enchantment(Enchantment::ShieldDamage(amount))),
+        )
+    }
+
+    pub fn player_heal_per_turn(amount: i32) -> GameEffect {
+        GameEffect::player(
+            &format!("Global Shield {}", amount,),
+            EffectTrigger::Always(EffectType::Enchantment(Enchantment::ShieldDamage(amount))),
+        )
+    }
+}
+
+pub struct OnCardPlayEffects;
+impl OnCardPlayEffects {
+    pub fn take_damage_on_play_elem(element_type: ElementType, amount: i32) -> GameEffect {
+        GameEffect::player(
+            &format!(
+                "Player takes {} Damage for Playing {} Spell",
+                amount,
                 element_type.description()
             ),
             EffectTrigger::Condition(
@@ -78,10 +126,47 @@ impl GameEffect {
         )
     }
 
-    // PLAYER CARD EFFECTS
-    // Damage
-    pub fn element_damage(element_type: ElementType, amount: i32) -> Self {
-        Self::enemy(
+    pub fn heal_on_play_elem(element_type: ElementType, amount: i32) -> GameEffect {
+        GameEffect::player(
+            &format!(
+                "Player Heals {} for Playing {} Spell",
+                amount,
+                element_type.description()
+            ),
+            EffectTrigger::Condition(
+                EffectCondition::PlayerPlaysCardWithElement(element_type.clone()),
+                EffectType::LifeAdjust(amount),
+            ),
+        )
+    }
+
+    pub fn heal_enemy_on_play_elem(element_type: ElementType, amount: i32) -> GameEffect {
+        GameEffect::enemy(
+            &format!(
+                "Enemy Heals {} for Player Playing {}",
+                amount,
+                element_type.description()
+            ),
+            EffectTrigger::Condition(
+                EffectCondition::PlayerPlaysCardWithElement(element_type.clone()),
+                EffectType::LifeAdjust(amount),
+            ),
+        )
+    }
+
+    pub fn discard_this_card() -> GameEffect {
+        GameEffect::player(
+            "Discard this card after playing",
+            EffectTrigger::Discard(String::new()),
+        )
+    }
+}
+
+pub struct CardEffects;
+impl CardEffects {
+    //Damage
+    pub fn do_element_damage(element_type: ElementType, amount: i32) -> GameEffect {
+        GameEffect::enemy(
             &format!("{} Damage", element_type.description()),
             EffectTrigger::Always(EffectType::Damage(Damage {
                 element_type,
@@ -90,8 +175,8 @@ impl GameEffect {
         )
     }
 
-    pub fn physical_damage(amount: i32) -> Self {
-        Self::enemy(
+    pub fn do_physical_damage(amount: i32) -> GameEffect {
+        GameEffect::enemy(
             &format!("Physical Damage"),
             EffectTrigger::Always(EffectType::Damage(Damage {
                 element_type: ElementType::NoElement,
@@ -100,51 +185,24 @@ impl GameEffect {
         )
     }
 
-    pub fn gravity(pct: f64) -> Self {
-        Self::enemy(
+    pub fn do_percent_damage(pct: f64) -> GameEffect {
+        GameEffect::enemy(
             &format!("Physical Damage"),
             EffectTrigger::Always(EffectType::PercentDamage(pct)),
         )
     }
 
     //Heals
-    pub fn heal(amount: i32) -> Self {
-        Self::player(
+    pub fn heal(amount: i32) -> GameEffect {
+        GameEffect::player(
             &format!("Heal"),
             EffectTrigger::Always(EffectType::LifeAdjust(amount)),
         )
     }
 
     //Utility
-    pub fn spell_cost_down_element(element_type: ElementType, amt: i32) -> Self {
-        Self::player(
-            &format!("{} Spells Cost {}", element_type.description(), amt),
-            EffectTrigger::Always(EffectType::Enchantment(Enchantment::SpellCostAdjust(
-                element_type,
-                amt,
-            ))),
-        )
-    }
-
-    pub fn spell_cost_down_all(amt: i32) -> Self {
-        Self::player(
-            &format!("All Spells Cost {}", amt),
-            EffectTrigger::Always(EffectType::Enchantment(Enchantment::SpellCostAdjust(
-                ElementType::NoElement,
-                amt,
-            ))),
-        )
-    }
-
-    pub fn power_add_per_turn(amt: i32) -> Self {
-        Self::player(
-            &format!("Power {} Each Turn", amt),
-            EffectTrigger::Always(EffectType::Enchantment(Enchantment::PowerAddPerTurn(amt))),
-        )
-    }
-
-    pub fn enemy_skip_turn() -> Self {
-        Self::enemy(
+    pub fn skip_enemy_turn() -> GameEffect {
+        GameEffect::enemy(
             &format!("Skip Turn"),
             EffectTrigger::Always(EffectType::SkipTurn),
         )

@@ -39,6 +39,7 @@ impl EffectTarget {
 pub enum EffectTrigger {
     Always(EffectType),
     Condition(EffectCondition, EffectType),
+    Discard(String),
 }
 
 impl EffectTrigger {
@@ -48,6 +49,7 @@ impl EffectTrigger {
             EffectTrigger::Condition(cond, eff) => {
                 format!("[COND - {}] {}", cond.description(), eff.description())
             }
+            EffectTrigger::Discard(id) => format!("Discard card id: {}", id),
         }
     }
 }
@@ -103,7 +105,6 @@ impl EffectCondition {
 pub enum EffectType {
     Damage(Damage),
     LifeAdjust(i32),
-    PowerAdjust(i32),
     Enchantment(Enchantment),
     PercentDamage(f64),
     SkipTurn,
@@ -116,7 +117,6 @@ impl EffectType {
                 format!("Damage [{}/{}]", dmg.element_type.description(), dmg.amount)
             }
             EffectType::LifeAdjust(adj) => format!("Life {}", adj),
-            EffectType::PowerAdjust(adj) => format!("Power {}", adj),
             EffectType::Enchantment(ench) => format!("Enchant [{}]", ench.description()),
             EffectType::PercentDamage(dmg) => format!("Damage {}%", dmg),
             EffectType::SkipTurn => format!("Skip Turn"),
@@ -126,21 +126,27 @@ impl EffectType {
 
 #[derive(Debug, Clone)]
 pub enum Enchantment {
-    SpellCostAdjust(ElementType, i32),
     SpellDamageAdjust(ElementType, i32),
-    PowerAddPerTurn(i32),
+    ShieldDamage(i32),
+    LifeAdjPerTurn(i32),
+    SpellElementForbidden(ElementType),
 }
 
 impl Enchantment {
     pub fn description(&self) -> String {
         match self {
-            Enchantment::SpellCostAdjust(cond, amt) => {
-                format!("Spell cost {} [{}]", amt, cond.description())
-            }
             Enchantment::SpellDamageAdjust(cond, amt) => {
-                format!("Spell damage {} [{}]", amt, cond.description())
+                format!("Spell damage adjust {} [{}]", amt, cond.description())
             }
-            Enchantment::PowerAddPerTurn(amt) => format!("Add {} power each turn", amt),
+            Enchantment::ShieldDamage(amt) => {
+                format!("Damage adjust {} on Attack", amt)
+            }
+            Enchantment::LifeAdjPerTurn(amt) => {
+                format!("Each turn, adjust life by {}", amt)
+            }
+            Enchantment::SpellElementForbidden(elem) => {
+                format!("{} Spells Forbidden", elem.description())
+            }
         }
     }
 }
