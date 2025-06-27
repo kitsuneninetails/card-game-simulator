@@ -1,7 +1,7 @@
 use crate::{
     fp_vec::FpVec,
-    game_effects::{Enchantments, EnemyEffects, GameEffect, OnCardPlayEffects},
-    player::Player,
+    game::game_effects::{Enchantments, EnemyEffects, GameEffect, OnCardPlayEffects},
+    game::player::Player,
     Damage, DamageAdjustment, DefenseProps, EffectTrigger, EffectType, ElementType, Enchantment,
 };
 

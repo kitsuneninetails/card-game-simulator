@@ -1,11 +1,11 @@
 #![feature(let_chains)]
 
 use card_game_simulator::{
-    enemy::Enemy,
+    game::enemy::Enemy,
     fp_vec::FpVec,
-    game::{Game, GameOutcome},
-    game_effects::CardEffects,
-    player::{Player, PlayerCard},
+    game::game::{Game, GameOutcome},
+    game::game_effects::CardEffects,
+    game::player::{Player, PlayerCard},
     ElementType,
 };
 

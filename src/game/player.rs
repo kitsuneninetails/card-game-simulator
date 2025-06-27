@@ -1,7 +1,7 @@
 use crate::{
-    enemy::Enemy,
+    game::enemy::Enemy,
     fp_vec::FpVec,
-    game_effects::{CardEffects, Enchantments, GameEffect, OnCardPlayEffects},
+    game::game_effects::{CardEffects, Enchantments, GameEffect, OnCardPlayEffects},
     Damage, EffectCondition, EffectTrigger, EffectType, ElementType, Enchantment,
 };
 use uuid::Uuid;
