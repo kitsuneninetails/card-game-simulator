@@ -94,7 +94,7 @@ impl EffectCondition {
             _ => false,
         }
     }
-    pub fn check_enemy(&self, enemy: &Enemy) -> bool {
+    pub fn check_enemy(&self, _enemy: &Enemy) -> bool {
         match self {
             _ => true,
         }
