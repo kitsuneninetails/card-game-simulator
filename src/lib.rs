@@ -1,9 +1,9 @@
 pub mod fp_vec;
 pub mod game;
 
-use crate::{
-    game::player::{Player, PlayerCard},
-    game::enemy::Enemy
+use crate::game::{
+    enemy::Enemy,
+    player::{Player, PlayerCard},
 };
 
 #[derive(Debug, Clone)]

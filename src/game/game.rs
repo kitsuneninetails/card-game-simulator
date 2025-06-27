@@ -1,8 +1,10 @@
 use crate::{
-    game::enemy::Enemy,
     fp_vec::FpVec,
-    game::game_effects::GameEffect,
-    game::player::{Player, PlayerCard},
+    game::{
+        enemy::Enemy,
+        game_effects::GameEffect,
+        player::{Player, PlayerCard},
+    },
     EffectTarget, EffectTrigger, EffectType, Enchantment,
 };
 
