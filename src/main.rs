@@ -102,7 +102,9 @@ fn print_cards(game: &Game) {
 fn game_loop(mut game: Game) -> Game {
     print_cards(&game);
 
-    while game.game_result == GameOutcome::Undecided && let Ok(card_numbers) = get_card_numbers() {
+    while game.game_result == GameOutcome::Undecided
+        && let Ok(card_numbers) = get_card_numbers()
+    {
         let cards: FpVec<PlayerCard> =
             card_numbers
                 .into_iter()
@@ -120,12 +122,12 @@ fn game_loop(mut game: Game) -> Game {
         if game.game_result == GameOutcome::Undecided {
             game = game.take_enemy_turn();
         };
-        if game.game_result == GameOutcome::Undecided {game = game.increment_turn()}
+        if game.game_result == GameOutcome::Undecided {
+            game = game.increment_turn()
+        }
 
         println!("-----------------------------------");
         print_cards(&game);
-
-
     }
     game
 }
