@@ -16,15 +16,24 @@ pub fn init_game() -> Game {
     let player_card_1 = PlayerCard::new("Gust", "Play to cause 3 Wind Damage.", ElementType::Wind)
         .play_card_effect(CardEffects::do_element_damage(ElementType::Wind, 3));
 
-    let player_card_2 =
-        PlayerCard::new("Stream", "Play to cause 3 Land Damage.", ElementType::Land)
-            .play_card_effect(CardEffects::do_element_damage(ElementType::Land, 3));
+    let player_card_2 = PlayerCard::new(
+        "Stream",
+        "Play to cause 3 Water Damage.",
+        ElementType::Water,
+    )
+    .play_card_effect(CardEffects::do_element_damage(ElementType::Water, 3));
 
-    let player_card_3 =
+    let player_card_3 = PlayerCard::new(
+        "Rock",
+        "Play to cause 3 Non-Element Damage.",
+        ElementType::Land,
+    )
+    .play_card_effect(CardEffects::do_physical_damage(3));
+
+    let player_card_4 =
         PlayerCard::new("First Aid", "Play to head 8 hit points.", ElementType::Land)
             .play_card_effect(CardEffects::heal(8));
 
-    let player_card_4 = SpecialCards::fire_hose();
     let player = Player::new(
         20,
         FpVec::from_vec(vec![
@@ -110,9 +119,12 @@ fn game_loop(mut game: Game) -> Game {
         game = game.take_player_turn(cards);
         if game.game_result == GameOutcome::Undecided {
             game = game.take_enemy_turn();
-        }
+        };
+        if game.game_result == GameOutcome::Undecided {game = game.increment_turn()}
+
         println!("-----------------------------------");
         print_cards(&game);
+
 
     }
     game

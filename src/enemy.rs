@@ -20,10 +20,17 @@ pub struct Enemy {
     pub player_play_card_effects: FpVec<GameEffect>,
     pub enchantments: FpVec<GameEffect>,
     pub current_activated_effects: FpVec<Enchantment>,
+    pub turn_limit: u32,
 }
 
 impl Enemy {
-    pub fn new(name: &str, hit_points: i32, defense_props: DefenseProps, turn_damage: i32) -> Self {
+    pub fn new(
+        name: &str,
+        hit_points: i32,
+        defense_props: DefenseProps,
+        turn_damage: i32,
+        turn_limit: u32,
+    ) -> Self {
         Self {
             name: name.to_string(),
             hit_points,
@@ -36,6 +43,7 @@ impl Enemy {
             player_play_card_effects: FpVec::new(),
             enchantments: FpVec::new(),
             current_activated_effects: FpVec::new(),
+            turn_limit,
         }
     }
 
@@ -178,8 +186,7 @@ impl Enemy {
     }
 
     fn take_damage(self, damage: Damage) -> Self {
-        let raw_damage1 = self.defense_props.any.adjust_damage(damage.amount);
-        let raw_damage2 = match damage.element_type {
+        let raw_damage = match damage.element_type {
             ElementType::Wind => self.defense_props.wind.adjust_damage(damage.amount),
             ElementType::Land => self.defense_props.land.adjust_damage(damage.amount),
             ElementType::Water => self.defense_props.water.adjust_damage(damage.amount),
@@ -189,10 +196,10 @@ impl Enemy {
             "Enemy takes damage: {}/{} ({} actual)",
             damage.element_type.description(),
             damage.amount,
-            min(raw_damage1, raw_damage2)
+            raw_damage
         );
         Enemy {
-            hit_points: self.hit_points - min(raw_damage1, raw_damage2),
+            hit_points: self.hit_points - raw_damage,
             ..self
         }
     }
@@ -205,9 +212,9 @@ impl Enemy {
                 wind: DamageAdjustment::Normal,
                 water: DamageAdjustment::Absolute(1),
                 land: DamageAdjustment::Absolute(-1),
-                any: DamageAdjustment::Normal,
             },
             3,
+            4,
         )
     }
 
@@ -218,24 +225,24 @@ impl Enemy {
             DefenseProps {
                 wind: DamageAdjustment::Percent(0.0),
                 water: DamageAdjustment::Normal,
-                land: DamageAdjustment::Absolute(-2),
-                any: DamageAdjustment::Normal,
+                land: DamageAdjustment::Absolute(2),
             },
             4,
+            3,
         )
     }
 
     pub fn forest_fire() -> Self {
         Self::new(
             "Forest Fire",
-            8,
+            16,
             DefenseProps {
                 wind: DamageAdjustment::Normal,
                 water: DamageAdjustment::Absolute(1),
-                land: DamageAdjustment::Percent(0.0),
-                any: DamageAdjustment::Normal,
+                land: DamageAdjustment::Normal,
             },
-            8,
+            4,
+            4,
         )
         .player_play_card_effect(OnCardPlayEffects::heal_enemy_on_play_elem(
             ElementType::Wind,
@@ -248,12 +255,12 @@ impl Enemy {
             "Landslide",
             20,
             DefenseProps {
-                wind: DamageAdjustment::Normal,
-                water: DamageAdjustment::Normal,
-                land: DamageAdjustment::Normal,
-                any: DamageAdjustment::Absolute(-1),
+                wind: DamageAdjustment::Absolute(-1),
+                water: DamageAdjustment::Absolute(-1),
+                land: DamageAdjustment::Absolute(-1),
             },
             2,
+            9,
         )
     }
 
@@ -265,9 +272,9 @@ impl Enemy {
                 wind: DamageAdjustment::Normal,
                 water: DamageAdjustment::Normal,
                 land: DamageAdjustment::Normal,
-                any: DamageAdjustment::Normal,
             },
             7,
+            16,
         )
         .enchantment(Enchantments::player_elem_spells_forbidden(
             ElementType::Water,
@@ -282,60 +289,57 @@ impl Enemy {
                 wind: DamageAdjustment::Normal,
                 water: DamageAdjustment::Absolute(2),
                 land: DamageAdjustment::Normal,
-                any: DamageAdjustment::Normal,
             },
             5,
+            16,
         )
-        .player_play_card_effect(OnCardPlayEffects::take_damage_on_play_elem(
-            ElementType::Wind,
-            1,
-        ))
     }
 
     pub fn earthquake() -> Self {
         Self::new(
             "Earthquake",
-            10,
+            8,
             DefenseProps {
-                wind: DamageAdjustment::Normal,
-                water: DamageAdjustment::Normal,
-                land: DamageAdjustment::Normal,
-                any: DamageAdjustment::Normal,
+                wind: DamageAdjustment::Absolute(-2),
+                water: DamageAdjustment::Absolute(-2),
+                land: DamageAdjustment::Percent(0.0),
             },
             5,
+            16,
         )
-        .enchantment(Enchantments::player_elem_spells_forbidden(
-            ElementType::Land,
-        ))
     }
 
     pub fn volcano() -> Self {
         Self::new(
             "Volcano Eruption",
-            5,
+            7,
             DefenseProps {
-                wind: DamageAdjustment::Normal,
-                water: DamageAdjustment::Normal,
-                land: DamageAdjustment::Normal,
-                any: DamageAdjustment::Absolute(-1),
+                wind: DamageAdjustment::Absolute(-1),
+                water: DamageAdjustment::Absolute(-1),
+                land: DamageAdjustment::Absolute(-1),
             },
             8,
+            42,
         )
         .player_play_card_effect(OnCardPlayEffects::heal_on_play_elem(ElementType::Water, 5))
     }
 
     pub fn floods() -> Self {
         Self::new(
-            "Floods Eruption",
-            12,
+            "Floods",
+            13,
             DefenseProps {
                 wind: DamageAdjustment::Normal,
                 water: DamageAdjustment::Normal,
                 land: DamageAdjustment::Normal,
-                any: DamageAdjustment::Normal,
             },
             5,
+            7,
         )
+        .player_play_card_effect(OnCardPlayEffects::take_damage_on_play_elem(
+            ElementType::Water,
+            2,
+        ))
     }
 
     pub fn drought() -> Self {
@@ -346,9 +350,9 @@ impl Enemy {
                 wind: DamageAdjustment::Normal,
                 water: DamageAdjustment::Absolute(1),
                 land: DamageAdjustment::Percent(0.0),
-                any: DamageAdjustment::Normal,
             },
             2,
+            6,
         )
     }
 
@@ -360,31 +364,32 @@ impl Enemy {
                 wind: DamageAdjustment::Percent(0.0),
                 water: DamageAdjustment::Normal,
                 land: DamageAdjustment::Normal,
-                any: DamageAdjustment::Normal,
             },
+            7,
             6,
         )
+        .player_play_card_effect(OnCardPlayEffects::heal_on_play_elem(ElementType::Land, 5))
     }
 
     pub fn meltdown() -> Self {
         Self::new(
             "Nuclear Meltdown",
-            35,
+            25,
             DefenseProps {
-                wind: DamageAdjustment::Normal,
+                wind: DamageAdjustment::Absolute(2),
                 water: DamageAdjustment::Normal,
                 land: DamageAdjustment::Normal,
-                any: DamageAdjustment::Normal,
             },
             2,
+            9,
         )
         .player_play_card_effect(OnCardPlayEffects::take_damage_on_play_elem(
             ElementType::Wind,
             2,
         ))
         .player_play_card_effect(OnCardPlayEffects::heal_enemy_on_play_elem(
-            ElementType::Wind,
-            1,
+            ElementType::Water,
+            2,
         ))
     }
 
@@ -394,11 +399,11 @@ impl Enemy {
             20,
             DefenseProps {
                 wind: DamageAdjustment::Absolute(1),
-                water: DamageAdjustment::Normal,
+                water: DamageAdjustment::Absolute(2),
                 land: DamageAdjustment::Normal,
-                any: DamageAdjustment::Normal,
             },
-            3,
+            4,
+            5,
         )
         .player_play_card_effect(OnCardPlayEffects::take_damage_on_play_elem(
             ElementType::Water,

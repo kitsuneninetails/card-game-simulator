@@ -42,12 +42,14 @@ impl Player {
             .inner
             .iter()
             .fold(card, |card, eff| match eff {
-                Enchantment::SpellDamageAdjust(element, adj) if *element == card.element => {
+                Enchantment::SpellDamageAdjust(element, adj)
+                    if *element == card.element || *element == ElementType::NoElement =>
+                {
                     PlayerCard {
                         play_card_effects: card.play_card_effects.push(GameEffect::enemy(
                             "Spell Damage Adjust Effect",
                             EffectTrigger::Always(EffectType::Damage(Damage {
-                                element_type: element.clone(),
+                                element_type: card.element.clone(),
                                 amount: *adj,
                             })),
                         )),
@@ -261,10 +263,12 @@ impl SpecialCards {
     pub fn env_suit() -> PlayerCard {
         PlayerCard::new(
             "Environmental Suit",
-            "If you have this card in your hand, take 2 less damage",
+            "If you have this card in your hand, take 2 less damage, wind and water spells do 1 more damage
+",
             ElementType::Water,
         )
         .game_start_effect(Enchantments::player_shield_from_elem(2))
+            .game_start_effect(Enchantments::player_elem_spell_damage_adj(ElementType::Water, 1))
     }
     pub fn power_amp() -> PlayerCard {
         PlayerCard::new(
@@ -280,10 +284,11 @@ impl SpecialCards {
     pub fn helis() -> PlayerCard {
         PlayerCard::new(
             "Hospital Helicopters",
-            "If you have this card in your hand, heal 3 per turn",
+            "If you have this card in your hand, heal 3 per turn, wind and land spells do 1 more damage",
             ElementType::Wind,
         )
         .game_start_effect(Enchantments::player_heal_per_turn(3))
+            .game_start_effect(Enchantments::player_elem_spell_damage_adj(ElementType::Wind, 1))
     }
     pub fn hydro_power() -> PlayerCard {
         PlayerCard::new(
@@ -321,13 +326,14 @@ impl SpecialCards {
     pub fn military_aid() -> PlayerCard {
         PlayerCard::new(
             "Military Aid",
-            "If you have this card in your hand, add 3 to any physical damage",
+            "If you have this card in your hand, heal 1 per turn and all spells do 1 more damage",
             ElementType::Land,
         )
         .game_start_effect(Enchantments::player_elem_spell_damage_adj(
             ElementType::NoElement,
-            2,
+            1,
         ))
+        .game_start_effect(Enchantments::player_heal_per_turn(2))
     }
     pub fn time_slip() -> PlayerCard {
         PlayerCard::new(
@@ -365,13 +371,14 @@ impl SpecialCards {
         .play_card_effect(CardEffects::do_element_damage(ElementType::Wind, 6))
         .play_card_effect(OnCardPlayEffects::discard_this_card())
     }
-    pub fn logistics() -> PlayerCard {
+    pub fn supply() -> PlayerCard {
         PlayerCard::new(
             "Supply Chains",
-            "Discard this card and Deal 4 Physical Damage",
+            "Discard this card and Deal 3 Earth and 3 Water Damage",
             ElementType::Wind,
         )
-        .play_card_effect(CardEffects::do_physical_damage(4))
+        .play_card_effect(CardEffects::do_element_damage(ElementType::Land, 3))
+        .play_card_effect(CardEffects::do_element_damage(ElementType::Water, 3))
         .play_card_effect(OnCardPlayEffects::discard_this_card())
     }
     pub fn inside_help() -> PlayerCard {
@@ -381,15 +388,6 @@ impl SpecialCards {
             ElementType::Wind,
         )
         .play_card_effect(CardEffects::do_percent_damage(0.5))
-        .play_card_effect(OnCardPlayEffects::discard_this_card())
-    }
-    pub fn tbd() -> PlayerCard {
-        PlayerCard::new(
-            "Time Slip",
-            "Discard this card and Skip Enemy Turn",
-            ElementType::Wind,
-        )
-        .play_card_effect(CardEffects::skip_enemy_turn())
         .play_card_effect(OnCardPlayEffects::discard_this_card())
     }
 }

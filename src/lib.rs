@@ -171,7 +171,6 @@ pub struct DefenseProps {
     pub wind: DamageAdjustment,
     pub water: DamageAdjustment,
     pub land: DamageAdjustment,
-    pub any: DamageAdjustment,
 }
 
 #[derive(Debug, Clone, PartialEq)]

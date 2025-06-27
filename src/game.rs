@@ -36,7 +36,9 @@ pub struct Game {
 impl Game {
     pub fn check_game_result(enemy: &Enemy, player: &Player, turn_number: u32) -> GameOutcome {
         match 0 {
-            _ if player.hit_points <= 0 => GameOutcome::EnemyWins(turn_number),
+            _ if player.hit_points <= 0 || turn_number > enemy.turn_limit => {
+                GameOutcome::EnemyWins(turn_number)
+            }
             _ if enemy.hit_points <= 0 => GameOutcome::PlayerWins(turn_number),
             _ => GameOutcome::Undecided,
         }
@@ -156,6 +158,13 @@ impl Game {
         }
     }
 
+    pub fn increment_turn(self) -> Self {
+        Self {
+            turn_number: self.turn_number + 1,
+            ..self
+        }
+    }
+
     pub fn take_enemy_turn(self) -> Self {
         let enemy = self.enemy;
         let player = self.player;
@@ -187,7 +196,6 @@ impl Game {
             },
             player,
             game_result,
-            turn_number: self.turn_number + 1,
             ..self
         }
     }
