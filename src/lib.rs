@@ -4,9 +4,10 @@ pub mod game;
 pub mod game_effects;
 pub mod player;
 
-use crate::player::PlayerCard;
-use enemy::Enemy;
-use player::Player;
+use crate::{
+    player::{Player, PlayerCard},
+    enemy::Enemy
+};
 
 #[derive(Debug, Clone)]
 pub enum EffectTarget {
