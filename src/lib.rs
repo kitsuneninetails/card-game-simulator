@@ -1,12 +1,10 @@
-pub mod enemy;
 pub mod fp_vec;
 pub mod game;
-pub mod game_effects;
-pub mod player;
 
-use crate::player::PlayerCard;
-use enemy::Enemy;
-use player::Player;
+use crate::game::{
+    enemy::Enemy,
+    player::{Player, PlayerCard},
+};
 
 #[derive(Debug, Clone)]
 pub enum EffectTarget {
@@ -94,7 +92,7 @@ impl EffectCondition {
             _ => false,
         }
     }
-    pub fn check_enemy(&self, enemy: &Enemy) -> bool {
+    pub fn check_enemy(&self, _enemy: &Enemy) -> bool {
         match self {
             _ => true,
         }

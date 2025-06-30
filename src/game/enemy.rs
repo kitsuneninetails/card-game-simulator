@@ -1,11 +1,11 @@
-use crate::fp_vec::FpVec;
-use crate::game_effects::{Enchantments, EnemyEffects, OnCardPlayEffects};
-use crate::player::Player;
 use crate::{
-    game_effects::GameEffect, Damage, DamageAdjustment, DefenseProps, EffectTrigger, EffectType,
-    ElementType, Enchantment,
+    fp_vec::FpVec,
+    game::{
+        game_effects::{Enchantments, EnemyEffects, GameEffect, OnCardPlayEffects},
+        player::Player,
+    },
+    Damage, DamageAdjustment, DefenseProps, EffectTrigger, EffectType, ElementType, Enchantment,
 };
-use std::cmp::min;
 
 #[derive(Debug, Clone)]
 pub struct Enemy {
@@ -51,7 +51,7 @@ impl Enemy {
         self.enchantments
             .inner
             .iter()
-            .fold((), |card, eff| match eff {
+            .fold((), |_card, eff| match eff {
                 _ => (),
             });
         Self {
@@ -126,11 +126,11 @@ impl Enemy {
         )
     }
 
-    pub fn start_turn(&self, player: &Player) -> FpVec<GameEffect> {
+    pub fn start_turn(&self, _player: &Player) -> FpVec<GameEffect> {
         self.start_turn_effects.clone()
     }
 
-    pub fn end_turn(&self, player: &Player) -> FpVec<GameEffect> {
+    pub fn end_turn(&self, _player: &Player) -> FpVec<GameEffect> {
         self.end_turn_effects.clone()
     }
 

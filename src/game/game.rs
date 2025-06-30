@@ -1,8 +1,11 @@
-use crate::fp_vec::FpVec;
-use crate::player::PlayerCard;
 use crate::{
-    enemy::Enemy, game_effects::GameEffect, player::Player, EffectTarget, EffectTrigger,
-    EffectType, Enchantment,
+    fp_vec::FpVec,
+    game::{
+        enemy::Enemy,
+        game_effects::GameEffect,
+        player::{Player, PlayerCard},
+    },
+    EffectTarget, EffectTrigger, EffectType, Enchantment,
 };
 
 #[derive(Debug, Clone, PartialEq)]
